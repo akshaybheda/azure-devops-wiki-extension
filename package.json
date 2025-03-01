@@ -1,0 +1,16 @@
+{
+  "name": "list-followed-wikis",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "azure-devops-extension-sdk": "^4.0.2",
+    "azure-devops-extension-api": "^4.247.0"
+  }
+}
