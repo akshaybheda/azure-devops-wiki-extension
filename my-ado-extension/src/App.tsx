@@ -139,8 +139,8 @@ function App() {
     );
   }
 
-  return (
-    <>
+  return loaded ? (
+    <div title="Wiki Subscriptions">
       <h4>
         Hello {SDK.getUser().name} User ID: {currUserId}
         {subscriptions.length > 0 && (
@@ -173,7 +173,11 @@ function App() {
           ))}
         </tbody>
       </table>
-    </>
+    </div>
+  ) : (
+    <div>
+      <h4>Loading...</h4>
+    </div>
   );
 }
 

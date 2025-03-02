@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "list-followed-wikis",
     "publisher": "akshay-bheda",
-    "version": "1.0.24",
+    "version": "1.0.25",
     "name": "List Followed Wikis",
     "description": "This extension lists the wikis that the current user is following.",
     "public": false,
