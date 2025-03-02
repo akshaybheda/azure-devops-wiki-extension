@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "azure-devops-extension-api": "^4.247.0",
+    "azure-devops-extension-api": "github:aloisklink/azure-devops-extension-api#2635bb031bb1870bf5de2c2ba31e858139543117",
     "azure-devops-extension-sdk": "^4.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
