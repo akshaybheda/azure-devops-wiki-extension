@@ -86,6 +86,26 @@ function App() {
     return path.split("/").pop() || "";
   }
 
+  function encodeQueryString(input: string): string {
+    // Remove `.md` extension
+    let path = input.replace(/\.md$/, "");
+
+    // Replace hyphens (`-`) with encoded spaces (`%20`)
+    path = path.replace(/-/g, "%20");
+
+    // Ensure `-` is double-encoded (`%2D` → `%252D`)
+    path = path.replace(/%2D/g, "%252D");
+
+    return path;
+  }
+
+  function getWikiUrl(page: WikiPage): string {
+    return (
+      "https://dev.azure.com/__Replace__ORG/__Replace__WithProj/_wiki/wikis/__Replace__Wikiname.wiki?pagePath=" +
+      encodeQueryString(page.gitItemPath)
+    );
+  }
+
   return (
     <>
       <h4>
@@ -104,7 +124,11 @@ function App() {
           {wikiPages.map((page) => (
             <tr key={page.id}>
               <td>
-                <a href={page.url} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={getWikiUrl(page)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {getLastSegment(page.path)}
                 </a>
               </td>
