@@ -7,14 +7,24 @@ import {
   NotificationSubscription,
   SubscriptionQueryFlags,
 } from "azure-devops-extension-api/Notification";
-import { WikiPage } from "azure-devops-extension-api/Wiki";
 import { CustomWikiClient } from "./CustomWikiClient";
+import { CoreRestClient } from "azure-devops-extension-api/Core";
+
+export interface IWikiInfo {
+  projectName: string;
+  wikiName: string;
+  pageId: number;
+  path: string;
+  gitItemPath: string;
+}
+
 function App() {
   const [currUserId, setCurrUserId] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<
     NotificationSubscription[]
   >([]);
-  const [wikiPages, setWikiPages] = useState<WikiPage[]>([]);
+  const [wikiPages, setWikiPages] = useState<IWikiInfo[]>([]);
+  const [loaded, setLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     const getSubscriptions = async () => {
@@ -22,8 +32,8 @@ function App() {
         NotificationRestClient
       );
 
-      notificationClient
-        .querySubscriptions({
+      try {
+        const subscriptions = await notificationClient.querySubscriptions({
           conditions: [
             {
               filter: {
@@ -38,38 +48,50 @@ function App() {
             },
           ],
           queryFlags: SubscriptionQueryFlags.None,
-        })
-        .then((subscriptions) => {
-          setSubscriptions(subscriptions);
-          getWikiInformation(subscriptions);
         });
 
-      const getWikiInformation = (
-        subscriptions: NotificationSubscription[]
-      ) => {
-        const customClient = getClient(CustomWikiClient);
+        setSubscriptions(subscriptions);
+        await getWikiInformation(subscriptions);
+      } catch (error) {
+        console.error("Error fetching subscriptions:", error);
+      }
+    };
 
-        subscriptions.forEach((element) => {
+    const getWikiInformation = async (
+      subscriptions: NotificationSubscription[]
+    ) => {
+      const customClient = getClient(CustomWikiClient);
+      const coreRestClient = getClient(CoreRestClient);
+
+      try {
+        for (const element of subscriptions) {
           const filter = element.filter.artifactId?.split("/");
-          if (filter != null && filter.length == 3) {
+          if (filter != null && filter.length === 3) {
             const projectId = filter[0];
             const wikiId = filter[1];
             const pageId = filter[2];
-
-            customClient.getWiki(wikiId, projectId).then((wiki) => {
-              console.log(wiki);
-
-              customClient
-                .GetPageAsync(projectId, wiki.name, parseInt(pageId))
-                .then((page) => {
-                  setWikiPages((prevWikiPages) => [...prevWikiPages, page]);
-                });
-            });
+            const projectInfo = await coreRestClient.getProject(projectId);
+            const wiki = await customClient.getWiki(wikiId, projectId);
+            const page = await customClient.GetPageAsync(
+              projectId,
+              wiki.name,
+              parseInt(pageId)
+            );
+            const wikiInfo: IWikiInfo = {
+              projectName: projectInfo.name,
+              wikiName: wiki.name,
+              pageId: page.id,
+              gitItemPath: page.gitItemPath,
+              path: page.path,
+            };
+            setWikiPages((prevWikiPages) => [...prevWikiPages, wikiInfo]);
           }
-        });
+        }
         console.log(wikiPages);
-        SDK.notifyLoadSucceeded();
-      };
+        setLoaded(true);
+      } catch (error) {
+        console.error("Error fetching wiki information:", error);
+      }
     };
 
     SDK.init({
@@ -81,6 +103,12 @@ function App() {
       getSubscriptions();
     });
   }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      SDK.notifyLoadSucceeded();
+    }
+  }, [loaded]);
 
   function getLastSegment(path: string): string {
     return path.split("/").pop() || "";
@@ -99,10 +127,15 @@ function App() {
     return path;
   }
 
-  function getWikiUrl(page: WikiPage): string {
+  function getWikiUrl(
+    gitItemPath: string,
+    wikiName: string,
+    projectName: string
+  ): string {
+    const orgName = SDK.getHost().name;
     return (
-      "https://dev.azure.com/__Replace__ORG/__Replace__WithProj/_wiki/wikis/__Replace__Wikiname.wiki?pagePath=" +
-      encodeQueryString(page.gitItemPath)
+      `https://dev.azure.com/${orgName}/${projectName}/_wiki/wikis/${wikiName}?pagePath=` +
+      encodeQueryString(gitItemPath)
     );
   }
 
@@ -117,15 +150,19 @@ function App() {
       <table>
         <thead>
           <tr>
-            <th>Path</th>
+            <th>Wikis Followed</th>
           </tr>
         </thead>
         <tbody>
           {wikiPages.map((page) => (
-            <tr key={page.id}>
+            <tr key={page.pageId}>
               <td>
                 <a
-                  href={getWikiUrl(page)}
+                  href={getWikiUrl(
+                    page.gitItemPath,
+                    page.wikiName,
+                    page.projectName
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
