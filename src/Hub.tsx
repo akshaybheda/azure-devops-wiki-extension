@@ -10,11 +10,7 @@ import {
   NotificationSubscription,
   SubscriptionQueryFlags,
 } from "azure-devops-extension-api/Notification";
-import {
-  CoreRestClient,
-  ProjectInfo,
-  TeamProject,
-} from "azure-devops-extension-api/Core";
+import { CoreRestClient, TeamProject } from "azure-devops-extension-api/Core";
 import { Card } from "azure-devops-ui/Card";
 import { ISimpleTableCell, Table } from "azure-devops-ui/Table";
 import { fixedColumns } from "./TableData";
@@ -44,16 +40,13 @@ function App() {
   const [loaded, setLoaded] = React.useState<boolean>(false);
   const projectCache = new Map<string, TeamProject>();
   const wikiCache = new Map<string, WikiV2>();
-  const newWikiPages: IWikiInfo[] = [];
 
   React.useEffect(() => {
-    const getSubscriptions = async () => {
-      const notificationClient: NotificationRestClient = getClient(
-        NotificationRestClient
-      );
+    const fetchSubscriptions = async () => {
+      const notificationClient = getClient(NotificationRestClient);
 
       try {
-        const subscriptions = await notificationClient.querySubscriptions({
+        const result = await notificationClient.querySubscriptions({
           conditions: [
             {
               filter: {
@@ -70,8 +63,8 @@ function App() {
           queryFlags: SubscriptionQueryFlags.None,
         });
 
-        setSubscriptions(subscriptions);
-        await getWikiInformation(subscriptions);
+        setSubscriptions(result);
+        await getWikiInformation(result);
       } catch (error) {
         console.error("Error fetching subscriptions:", error);
       }
@@ -84,32 +77,49 @@ function App() {
       const coreRestClient = getClient(CoreRestClient);
 
       try {
-        for (const element of subscriptions) {
+        const fetchTasks = subscriptions.map(async (element) => {
           const filter = element.filter.artifactId?.split("/");
-          if (filter != null && filter.length === 3) {
-            const [projectId, wikiId, pageId] = filter;
+          if (!filter || filter.length !== 3) return null;
 
+          const [projectId, wikiId, pageId] = filter;
+
+          try {
             // Fetch project info only if not cached
-            let projectInfo = projectCache.get(projectId);
+            const projectInfo =
+              projectCache.get(projectId) ??
+              (await coreRestClient.getProject(projectId).catch((error) => {
+                console.error(`Failed to fetch project ${projectId}:`, error);
+                return null;
+              }));
 
-            if (!projectInfo) {
-              projectInfo = await coreRestClient.getProject(projectId);
-              projectCache.set(projectId, projectInfo);
-            }
+            if (projectInfo) projectCache.set(projectId, projectInfo);
 
             // Fetch wiki info only if not cached
-            let wiki = wikiCache.get(wikiId);
-            if (!wiki) {
-              wiki = await customClient.getWiki(wikiId, projectId);
-              wikiCache.set(wikiId, wiki);
-            }
+            const wiki =
+              wikiCache.get(wikiId) ??
+              (await customClient.getWiki(wikiId, projectId).catch((error) => {
+                console.error(`Failed to fetch wiki ${wikiId}:`, error);
+                return null;
+              }));
 
-            const page = await customClient.GetPageAsync(
-              projectId,
-              wiki.name,
-              parseInt(pageId)
-            );
-            const wikiInfo: IWikiInfo = {
+            if (wiki) wikiCache.set(wikiId, wiki);
+
+            if (!projectInfo || !wiki) return null; // Skip if either failed
+
+            // Fetch the wiki page
+            const page = await customClient
+              .GetPageAsync(projectId, wiki.name, parseInt(pageId))
+              .catch((error) => {
+                console.error(
+                  `Failed to fetch page ${pageId} in wiki ${wikiId}:`,
+                  error
+                );
+                return null;
+              });
+
+            if (!page) return null;
+
+            return {
               projectName: projectInfo.name,
               wikiName: wiki.name,
               pageId: page.id,
@@ -117,24 +127,28 @@ function App() {
               path: page.path,
               remoteUrl: page.remoteUrl,
             };
-            newWikiPages.push(wikiInfo);
-            // setWikiPages((prevWikiPages) => [...prevWikiPages, wikiInfo]);
+          } catch (error) {
+            console.error(`Unexpected error processing subscription:`, error);
+            return null;
           }
-        }
-        // Update state once after all processing
-        setWikiPages((prevWikiPages) => [...prevWikiPages, ...newWikiPages]);
+        });
+
+        const results = await Promise.all(fetchTasks);
+        const validWikiPages = results.filter(
+          (wikiInfo): wikiInfo is IWikiInfo => wikiInfo !== null
+        );
+
+        setWikiPages((prevWikiPages) => [...prevWikiPages, ...validWikiPages]);
         setLoaded(true);
       } catch (error) {
         console.error("Error fetching wiki information:", error);
       }
     };
 
-    SDK.init({
-      loaded: false,
-    });
+    SDK.init({ loaded: false });
 
     SDK.ready().then(() => {
-      getSubscriptions();
+      fetchSubscriptions();
     });
   }, []);
 
@@ -146,31 +160,6 @@ function App() {
 
   function getLastSegment(path: string): string {
     return path.split("/").pop() || "";
-  }
-
-  function encodeQueryString(input: string): string {
-    // Remove `.md` extension
-    let path = input.replace(/\.md$/, "");
-
-    // Replace hyphens (`-`) with encoded spaces (`%20`)
-    path = path.replace(/-/g, "%20");
-
-    // Ensure `-` is double-encoded (`%2D` → `%252D`)
-    path = path.replace(/%2D/g, "%252D");
-
-    return path;
-  }
-
-  function getWikiUrl(
-    gitItemPath: string,
-    wikiName: string,
-    projectName: string
-  ): string {
-    const orgName = SDK.getHost().name;
-    return (
-      `https://dev.azure.com/${orgName}/${projectName}/_wiki/wikis/${wikiName}?pagePath=` +
-      encodeQueryString(gitItemPath)
-    );
   }
 
   return loaded ? (
