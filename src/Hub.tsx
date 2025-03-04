@@ -1,16 +1,22 @@
-import { useEffect, useState } from "react";
+import "./Hub.scss";
+import * as React from "react";
 import * as SDK from "azure-devops-extension-sdk";
-import "./App.css";
-import { getClient } from "azure-devops-extension-api/Common";
+import { getClient } from "azure-devops-extension-api";
+import { Page } from "azure-devops-ui/Page";
+import { showRootComponent } from "./Common";
+import { CustomWikiClient } from "./CustomWikiClient";
 import {
   NotificationRestClient,
   NotificationSubscription,
   SubscriptionQueryFlags,
 } from "azure-devops-extension-api/Notification";
-import { CustomWikiClient } from "./CustomWikiClient";
 import { CoreRestClient } from "azure-devops-extension-api/Core";
+import { Card } from "azure-devops-ui/Card";
+import { ISimpleTableCell, Table } from "azure-devops-ui/Table";
+import { fixedColumns } from "./TableData";
+import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
-export interface IWikiInfo {
+interface IWikiInfo {
   projectName: string;
   wikiName: string;
   pageId: number;
@@ -18,15 +24,20 @@ export interface IWikiInfo {
   gitItemPath: string;
 }
 
+export interface ITableDataItem extends ISimpleTableCell {
+  name: string;
+  url: string;
+  project: string;
+}
+
 function App() {
-  const [currUserId, setCurrUserId] = useState<string | null>(null);
-  const [subscriptions, setSubscriptions] = useState<
+  const [subscriptions, setSubscriptions] = React.useState<
     NotificationSubscription[]
   >([]);
-  const [wikiPages, setWikiPages] = useState<IWikiInfo[]>([]);
-  const [loaded, setLoaded] = useState<boolean>(false);
+  const [wikiPages, setWikiPages] = React.useState<IWikiInfo[]>([]);
+  const [loaded, setLoaded] = React.useState<boolean>(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const getSubscriptions = async () => {
       const notificationClient: NotificationRestClient = getClient(
         NotificationRestClient
@@ -39,7 +50,7 @@ function App() {
               filter: {
                 artifactType: "WikiPageId",
                 type: "Artifact",
-                artifactId: null,
+                artifactId: null
               },
               flags: null,
               scope: "",
@@ -98,13 +109,12 @@ function App() {
       loaded: false,
     });
 
-    setCurrUserId(SDK.getUser().id);
     SDK.ready().then(() => {
       getSubscriptions();
     });
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (loaded) {
       SDK.notifyLoadSucceeded();
     }
@@ -140,45 +150,46 @@ function App() {
   }
 
   return loaded ? (
-    <div title="Wiki Subscriptions">
-      <h4>
-        Hello {SDK.getUser().name} User ID: {currUserId}
-        {subscriptions.length > 0 && (
-          <span> with {subscriptions.length} subscriptions</span>
-        )}
-      </h4>
-      <table>
-        <thead>
-          <tr>
-            <th>Wikis Followed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {wikiPages.map((page) => (
-            <tr key={page.pageId}>
-              <td>
-                <a
-                  href={getWikiUrl(
+    <Page className="page-content flex-grow">
+      <div title="Wiki Subscriptions">
+        <h4>
+          Hello {SDK.getUser().name}{" "}
+          {subscriptions.length > 0 && (
+            <span> with {subscriptions.length} subscriptions</span>
+          )}
+        </h4>
+        <Card
+          className="flex-grow bolt-table-card"
+          contentProps={{ contentPadding: false }}
+        >
+          <Table
+            ariaLabel="Basic Table"
+            columns={fixedColumns}
+            itemProvider={
+              new ArrayItemProvider<ITableDataItem>(
+                wikiPages.map((page) => ({
+                  name: page.path,
+                  url: getWikiUrl(
                     page.gitItemPath,
                     page.wikiName,
                     page.projectName
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {getLastSegment(page.path)}
-                </a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  ),
+                  project: page.projectName,
+                }))
+              )
+            }
+            role="table"
+            className="table-example"
+            containerClassName="h-scroll-auto"
+          />
+        </Card>
+      </div>
+    </Page>
   ) : (
-    <div>
+    <Page>
       <h4>Loading...</h4>
-    </div>
+    </Page>
   );
 }
 
-export default App;
+showRootComponent(<App />);

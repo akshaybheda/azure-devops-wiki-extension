@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "list-followed-wikis",
     "publisher": "akshay-bheda",
-    "version": "1.0.27",
+    "version": "1.0.28",
     "name": "List Followed Wikis",
     "description": "This extension lists the wikis that the current user is following.",
     "public": false,
@@ -10,17 +10,16 @@
         "Azure Boards"
     ],
     "icons": {
-        "default": "my-ado-extension/src/images/icon.png"
+        "default": "static/icon.png"
     },
     "targets": [
         {
             "id": "Microsoft.VisualStudio.Services"
         }
     ],
-    "scopes":[
+    "scopes": [
         "vso.notification",
         "vso.wiki"
-
     ],
     "contributions": [
         {
@@ -31,13 +30,18 @@
             ],
             "properties": {
                 "name": "List Followed Wikis",
-                "uri": "my-ado-extension/dist/index.html"
+                "uri": "dist/Hub.html",
+                "icon": "asset://static/icon.png"
             }
         }
     ],
     "files": [
         {
-            "path": "my-ado-extension/dist",
+            "path": "static",
+            "addressable": true
+        },
+        {
+            "path": "dist",
             "addressable": true
         }
     ]

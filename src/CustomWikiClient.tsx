@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { WikiPage, WikiRestClient } from "azure-devops-extension-api/Wiki";
 import { IVssRestClientOptions } from "azure-devops-extension-api";
 import { VersionControlRecursionType } from "azure-devops-extension-api/Git";
