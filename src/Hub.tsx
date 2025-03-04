@@ -22,6 +22,7 @@ interface IWikiInfo {
   pageId: number;
   path: string;
   gitItemPath: string;
+  remoteUrl: string;
 }
 
 export interface ITableDataItem extends ISimpleTableCell {
@@ -94,6 +95,7 @@ function App() {
               pageId: page.id,
               gitItemPath: page.gitItemPath,
               path: page.path,
+              remoteUrl: page.remoteUrl
             };
             setWikiPages((prevWikiPages) => [...prevWikiPages, wikiInfo]);
           }
@@ -169,11 +171,7 @@ function App() {
               new ArrayItemProvider<ITableDataItem>(
                 wikiPages.map((page) => ({
                   name: page.path,
-                  url: getWikiUrl(
-                    page.gitItemPath,
-                    page.wikiName,
-                    page.projectName
-                  ),
+                  url: page.remoteUrl,
                   project: page.projectName,
                 }))
               )
