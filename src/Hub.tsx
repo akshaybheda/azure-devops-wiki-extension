@@ -10,11 +10,16 @@ import {
   NotificationSubscription,
   SubscriptionQueryFlags,
 } from "azure-devops-extension-api/Notification";
-import { CoreRestClient } from "azure-devops-extension-api/Core";
+import {
+  CoreRestClient,
+  ProjectInfo,
+  TeamProject,
+} from "azure-devops-extension-api/Core";
 import { Card } from "azure-devops-ui/Card";
 import { ISimpleTableCell, Table } from "azure-devops-ui/Table";
 import { fixedColumns } from "./TableData";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { WikiV2 } from "azure-devops-extension-api/Wiki";
 
 interface IWikiInfo {
   projectName: string;
@@ -37,6 +42,9 @@ function App() {
   >([]);
   const [wikiPages, setWikiPages] = React.useState<IWikiInfo[]>([]);
   const [loaded, setLoaded] = React.useState<boolean>(false);
+  const projectCache = new Map<string, TeamProject>();
+  const wikiCache = new Map<string, WikiV2>();
+  const newWikiPages: IWikiInfo[] = [];
 
   React.useEffect(() => {
     const getSubscriptions = async () => {
@@ -51,7 +59,7 @@ function App() {
               filter: {
                 artifactType: "WikiPageId",
                 type: "Artifact",
-                artifactId: null
+                artifactId: null,
               },
               flags: null,
               scope: "",
@@ -79,11 +87,23 @@ function App() {
         for (const element of subscriptions) {
           const filter = element.filter.artifactId?.split("/");
           if (filter != null && filter.length === 3) {
-            const projectId = filter[0];
-            const wikiId = filter[1];
-            const pageId = filter[2];
-            const projectInfo = await coreRestClient.getProject(projectId);
-            const wiki = await customClient.getWiki(wikiId, projectId);
+            const [projectId, wikiId, pageId] = filter;
+
+            // Fetch project info only if not cached
+            let projectInfo = projectCache.get(projectId);
+
+            if (!projectInfo) {
+              projectInfo = await coreRestClient.getProject(projectId);
+              projectCache.set(projectId, projectInfo);
+            }
+
+            // Fetch wiki info only if not cached
+            let wiki = wikiCache.get(wikiId);
+            if (!wiki) {
+              wiki = await customClient.getWiki(wikiId, projectId);
+              wikiCache.set(wikiId, wiki);
+            }
+
             const page = await customClient.GetPageAsync(
               projectId,
               wiki.name,
@@ -95,12 +115,14 @@ function App() {
               pageId: page.id,
               gitItemPath: page.gitItemPath,
               path: page.path,
-              remoteUrl: page.remoteUrl
+              remoteUrl: page.remoteUrl,
             };
-            setWikiPages((prevWikiPages) => [...prevWikiPages, wikiInfo]);
+            newWikiPages.push(wikiInfo);
+            // setWikiPages((prevWikiPages) => [...prevWikiPages, wikiInfo]);
           }
         }
-        console.log(wikiPages);
+        // Update state once after all processing
+        setWikiPages((prevWikiPages) => [...prevWikiPages, ...newWikiPages]);
         setLoaded(true);
       } catch (error) {
         console.error("Error fetching wiki information:", error);
