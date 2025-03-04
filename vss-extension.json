@@ -2,10 +2,23 @@
     "manifestVersion": 1,
     "id": "list-followed-wikis",
     "publisher": "akshay-bheda",
-    "version": "1.0.28",
-    "name": "List Followed Wikis",
+    "version": "1.0.29",
+    "name": "subscribed-wikis",
     "description": "This extension lists the wikis that the current user is following.",
-    "public": false,
+    "public": true,
+    "tags":[
+        "Extension",
+        "Azure DevOps Extension",
+        "Wiki",
+        "Followed Wikis",
+        "List Followed Wikis",
+        "List Wikis"
+    ],
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
     "categories": [
         "Azure Boards"
     ],
@@ -21,6 +34,17 @@
         "vso.notification",
         "vso.wiki"
     ],
+    "links": {
+        "repository": {
+            "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension"
+        },
+        "issues": {
+            "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension/issues"
+        },
+        "support": {
+            "uri": "mailto:akshaybheda@gmail.com"
+        }
+    },
     "contributions": [
         {
             "id": "list-followed-wikis",
@@ -31,10 +55,14 @@
             "properties": {
                 "name": "List Followed Wikis",
                 "uri": "dist/Hub.html",
-                "icon": "asset://static/icon.png"
+                "icon": "asset://static/transparent-icon.png"
             }
         }
     ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension"
+      },
     "files": [
         {
             "path": "static",
