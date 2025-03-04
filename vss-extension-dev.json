@@ -1,0 +1,76 @@
+{
+    "manifestVersion": 1,
+    "id": "hub-sample-test",
+    "publisher": "akshay-bheda",
+    "version": "1.0.1",
+    "name": "Sample test",
+    "description": "This extension lists the wikis that the current user is following.",
+    "public": false,
+    "tags":[
+        "Extension",
+        "Azure DevOps Extension",
+        "Wiki",
+        "Followed Wikis",
+        "List Followed Wikis",
+        "List Wikis"
+    ],
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
+    "categories": [
+        "Azure Boards"
+    ],
+    "icons": {
+        "default": "static/icon.png"
+    },
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "scopes": [
+        "vso.notification",
+        "vso.wiki"
+    ],
+    "links": {
+        "repository": {
+            "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension"
+        },
+        "issues": {
+            "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension/issues"
+        },
+        "support": {
+            "uri": "mailto:akshaybheda@gmail.com"
+        }
+    },
+    "contributions": [
+        {
+            "id": "list-followed-wikis",
+            "type": "ms.vss-web.hub",
+            "targets": [
+                "ms.vss-work-web.work-hub-group"
+            ],
+            "properties": {
+                "name": "List Followed Wikis",
+                "uri": "dist/Hub.html",
+                "icon": "asset://static/transparent-icon.png"
+            }
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/akshaybheda/azure-devops-wiki-extension"
+      },
+    "files": [
+        {
+            "path": "static",
+            "addressable": true
+        },
+        {
+            "path": "dist",
+            "addressable": true
+        }
+    ]
+}
