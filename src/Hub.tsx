@@ -17,7 +17,7 @@ import { fixedColumns } from "./TableData";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { WikiV2 } from "azure-devops-extension-api/Wiki";
 import { Button } from "azure-devops-ui/Button";
-
+import { Spinner } from "azure-devops-ui/Spinner";
 interface IWikiInfo {
   projectName: string;
   wikiName: string;
@@ -221,9 +221,9 @@ function App() {
       </div>
     </Page>
   ) : (
-    <Page className="page-content flex-grow">
-      <h4>Loading...</h4>
-    </Page>
+    <div className="flex-row">
+      <Spinner label="loading" />
+    </div>
   );
 }
 
