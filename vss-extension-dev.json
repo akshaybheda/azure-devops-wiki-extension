@@ -1,9 +1,9 @@
 {
     "manifestVersion": 1,
-    "id": "hub-sample-test",
+    "id": "hub-sample-dev",
     "publisher": "akshay-bheda",
-    "version": "1.0.1",
-    "name": "Sample test",
+    "version": "1.0.5",
+    "name": "Dev build for List Followed Wikis",
     "description": "This extension lists the wikis that the current user is following.",
     "public": false,
     "tags":[
@@ -32,7 +32,8 @@
     ],
     "scopes": [
         "vso.notification",
-        "vso.wiki"
+        "vso.wiki",
+        "vso.project"
     ],
     "links": {
         "repository": {

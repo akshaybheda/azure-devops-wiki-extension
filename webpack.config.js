@@ -1,22 +1,10 @@
 const path = require("path");
-const fs = require("fs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
-
-// Webpack entry points. Mapping from resulting bundle name to the source file entry.
-const entries = {};
-
-// Loop through subfolders in the "src" folder and add an entry for each one
-const srcDir = path.join(__dirname, "src");
-fs.readdirSync(srcDir).filter(dir => {
-    if (fs.statSync(path.join(srcDir, dir)).isDirectory()) {
-        entries[dir] = "./" + path.relative(process.cwd(), path.join(srcDir, dir, dir));
-    }
-});
 
 module.exports = (env, argv) => ({
     entry: "./src/Hub.tsx",
     output: {
-        filename: "hub.js"
+        filename: "Hub.js"
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"],
