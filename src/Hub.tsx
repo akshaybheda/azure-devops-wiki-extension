@@ -217,8 +217,10 @@ function App() {
           const project = await coreClient.getProject(projectId);
           return [projectId, project?.name || projectId] as const;
         } catch (error) {
+          // Fall back to the project ID (still valid in ADO URLs) rather than
+          // hiding the page if the project name can't be read.
           console.warn(`Failed to fetch project ${projectId}:`, error);
-          return [projectId, null] as const;
+          return [projectId, projectId] as const;
         }
       })
     );
