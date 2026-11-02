@@ -124,7 +124,7 @@ function App() {
     }
   }, [initialDataReady]);
 
-  const cacheKey = (userId: string) => `wikiPages:v4:${userId}`;
+  const cacheKey = (userId: string) => `wikiPages:v5:${userId}`;
 
   const loadFromLocalStorage = (userId: string): IWikiCache | null => {
     try {
@@ -297,7 +297,9 @@ function App() {
               type: "Artifact",
               artifactId: null,
             } as any,
-            flags: SubscriptionFlags.None,
+            // Must be null: SubscriptionFlags.None (0) makes the server
+            // return no artifact (follow) subscriptions.
+            flags: null as unknown as SubscriptionFlags,
             scope: "",
             subscriberId: currentUser.id,
             subscriptionId: "",

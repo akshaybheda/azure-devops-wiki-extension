@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "hub-sample-dev",
     "publisher": "akshay-bheda",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "name": "Dev build for List Followed Wikis",
     "description": "This extension lists the wikis that the current user is following.",
     "public": false,
