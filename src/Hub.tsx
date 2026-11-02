@@ -124,7 +124,7 @@ function App() {
     }
   }, [initialDataReady]);
 
-  const cacheKey = (userId: string) => `wikiPages:v3:${userId}`;
+  const cacheKey = (userId: string) => `wikiPages:v4:${userId}`;
 
   const loadFromLocalStorage = (userId: string): IWikiCache | null => {
     try {
@@ -489,7 +489,7 @@ function App() {
         <div className="wiki-toolbar">
           <TextField
             ariaLabel="Search followed wiki pages"
-            className="wiki-search"
+            containerClassName="wiki-search"
             placeholder="Search pages, wikis, or projects"
             value={searchText}
             onChange={(_, value) => setSearchText(value || "")}
