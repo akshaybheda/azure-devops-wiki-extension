@@ -577,17 +577,18 @@ function App() {
             modal
             lightDismiss={!isUnfollowing}
             showCloseButton={!isUnfollowing}
-            primaryButtonProps={{
-              text: isUnfollowing ? "Unfollowing…" : "Unfollow",
-              danger: true,
-              disabled: isUnfollowing,
-              onClick: handleUnfollow,
-            }}
             footerButtonProps={[
               {
                 text: "Cancel",
                 disabled: isUnfollowing,
                 onClick: () => setPendingUnfollow(null),
+              },
+              {
+                text: isUnfollowing ? "Unfollowing…" : "Unfollow",
+                primary: true,
+                danger: true,
+                disabled: isUnfollowing,
+                onClick: handleUnfollow,
               },
             ]}
           >
