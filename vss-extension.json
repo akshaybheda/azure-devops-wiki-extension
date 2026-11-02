@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "list-followed-wikis",
     "publisher": "akshay-bheda",
-    "version": "1.0.36",
+    "version": "1.0.37",
     "name": "List Followed Wikis",
     "description": "This extension lists the wikis that the current user is following.",
     "public": true,
@@ -32,6 +32,7 @@
     ],
     "scopes": [
         "vso.notification",
+        "vso.notification_manage",
         "vso.wiki",
         "vso.project"
     ],

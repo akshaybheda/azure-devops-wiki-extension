@@ -3,3 +3,94 @@
 .sample-hub {
     font-size: $fontSizeM;
 }
+
+.wiki-toolbar {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: space-between;
+    margin: 20px 0 8px;
+}
+
+.wiki-search {
+    flex: 1 1 280px;
+    max-width: 520px;
+}
+
+.wiki-sort {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.wiki-sort-label,
+.wiki-results-count,
+.wiki-subscription-total {
+    color: $secondary-text;
+}
+
+.wiki-sort-label {
+    font-size: $fontSizeS;
+    margin-right: 4px;
+}
+
+.wiki-sort-selected {
+    font-weight: 600;
+}
+
+.wiki-results-count {
+    align-items: center;
+    display: flex;
+    font-size: $fontSizeS;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.wiki-table-secondary {
+    color: $secondary-text;
+    font-size: $fontSizeS;
+}
+
+.wiki-followed-date {
+    white-space: nowrap;
+}
+
+.wiki-row-action {
+    justify-content: flex-end;
+}
+
+.wiki-empty-state {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    margin: 56px 16px;
+    text-align: center;
+}
+
+.wiki-empty-state h3 {
+    font-size: $fontSizeL;
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+
+.wiki-empty-state p {
+    color: $secondary-text;
+    margin: 0 0 16px;
+}
+
+@media (max-width: 640px) {
+    .wiki-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .wiki-search {
+        max-width: none;
+    }
+
+    .wiki-sort {
+        align-items: flex-start;
+    }
+}

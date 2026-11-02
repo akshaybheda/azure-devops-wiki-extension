@@ -18,7 +18,7 @@ import { CoreRestClient } from "azure-devops-extension-api/Core";
 import { WikiRestClient } from "azure-devops-extension-api/Wiki";
 import { Card } from "azure-devops-ui/Card";
 import { ISimpleTableCell, Table } from "azure-devops-ui/Table";
-import { fixedColumns } from "./TableData";
+import { getColumns } from "./TableData";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Button } from "azure-devops-ui/Button";
 import { Spinner } from "azure-devops-ui/Spinner";
@@ -26,6 +26,8 @@ import {
   MessageCard,
   MessageCardSeverity,
 } from "azure-devops-ui/MessageCard";
+import { TextField } from "azure-devops-ui/TextField";
+import { Dialog } from "azure-devops-ui/Dialog";
 
 interface IWikiInfo {
   projectName: string;
@@ -34,6 +36,8 @@ interface IWikiInfo {
   path: string;
   gitItemPath: string;
   remoteUrl: string;
+  subscriptionId: string;
+  followedDate: string;
 }
 
 interface IWikiCache {
@@ -46,6 +50,9 @@ export interface ITableDataItem extends ISimpleTableCell {
   name: string;
   url: string;
   project: string;
+  wiki: string;
+  followedDate: string;
+  subscriptionId: string;
 }
 
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000;
@@ -117,7 +124,7 @@ function App() {
     }
   }, [initialDataReady]);
 
-  const cacheKey = (userId: string) => `wikiPages:v2:${userId}`;
+  const cacheKey = (userId: string) => `wikiPages:v3:${userId}`;
 
   const loadFromLocalStorage = (userId: string): IWikiCache | null => {
     try {
@@ -168,12 +175,24 @@ function App() {
         const [projectId, wikiId, pageIdValue] = parts;
         const pageId = Number(pageIdValue);
         if (!projectId || !wikiId || !Number.isFinite(pageId)) return null;
-        return { projectId, wikiId, pageId };
+        return {
+          projectId,
+          wikiId,
+          pageId,
+          subscriptionId: subscription.id,
+          followedDate: new Date(subscription.modifiedDate).toISOString(),
+        };
       })
       .filter(
         (
           item
-        ): item is { projectId: string; wikiId: string; pageId: number } =>
+        ): item is {
+          projectId: string;
+          wikiId: string;
+          pageId: number;
+          subscriptionId: string;
+          followedDate: string;
+        } =>
           item !== null
       );
 
@@ -221,7 +240,7 @@ function App() {
     return mapWithConcurrency(
       artifactPages,
       PAGE_FETCH_CONCURRENCY,
-      async ({ projectId, wikiId, pageId }) => {
+      async ({ projectId, wikiId, pageId, subscriptionId, followedDate }) => {
         const projectName = projectNames.get(projectId);
         const projectWikis = wikisByProject.get(projectId);
         if (!projectName || !projectWikis) return null;
@@ -246,6 +265,8 @@ function App() {
             remoteUrl: `${collectionUrl}${encodeURIComponent(
               projectName
             )}/_wiki/wikis/${encodeURIComponent(wiki.name)}/${page.id}`,
+            subscriptionId,
+            followedDate,
           };
         } catch (error) {
           console.warn(
@@ -300,6 +321,41 @@ function App() {
     if (user) void fetchSubscriptions(user);
   };
 
+  const [searchText, setSearchText] = React.useState("");
+  const [sortOrder, setSortOrder] = React.useState<
+    "recent" | "oldest" | "name"
+  >("recent");
+  const [pendingUnfollow, setPendingUnfollow] = React.useState<IWikiInfo | null>(
+    null
+  );
+  const [isUnfollowing, setIsUnfollowing] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+
+  const handleUnfollow = async () => {
+    if (!pendingUnfollow || isUnfollowing) return;
+    setIsUnfollowing(true);
+    setActionError(null);
+    try {
+      await getClient(NotificationRestClient).deleteSubscription(
+        pendingUnfollow.subscriptionId
+      );
+      const updatedPages = wikiPages.filter(
+        (page) => page.subscriptionId !== pendingUnfollow.subscriptionId
+      );
+      const updatedCount = Math.max(0, subscriptionCount - 1);
+      setWikiPages(updatedPages);
+      setSubscriptionCount(updatedCount);
+      if (user) saveToLocalStorage(user.id, updatedCount, updatedPages);
+      setPendingUnfollow(null);
+    } catch (error) {
+      console.error("Unable to unfollow wiki page:", error);
+      setActionError(`Unable to unfollow this page. ${getErrorMessage(error)}`);
+      setPendingUnfollow(null);
+    } finally {
+      setIsUnfollowing(false);
+    }
+  };
+
   React.useEffect(() => {
     let active = true;
 
@@ -338,13 +394,67 @@ function App() {
     };
   }, []);
 
+  const visiblePages = React.useMemo(() => {
+    const search = searchText.trim().toLocaleLowerCase();
+    const filteredPages = wikiPages.filter((page) =>
+      [page.path, page.wikiName, page.projectName]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(search)
+    );
+    return filteredPages.sort((left, right) => {
+      const leftDate = new Date(left.followedDate).getTime();
+      const rightDate = new Date(right.followedDate).getTime();
+      const leftId = Number(left.subscriptionId);
+      const rightId = Number(right.subscriptionId);
+      const numericIdOrder =
+        Number.isFinite(leftId) && Number.isFinite(rightId)
+          ? leftId - rightId
+          : left.subscriptionId.localeCompare(right.subscriptionId, undefined, {
+              numeric: true,
+            });
+      if (sortOrder === "name") {
+        return (
+          left.path.localeCompare(right.path, undefined, {
+            sensitivity: "base",
+          }) || left.wikiName.localeCompare(right.wikiName, undefined, {
+            sensitivity: "base",
+          })
+        );
+      }
+      const dateOrder =
+        Number.isFinite(leftDate) && Number.isFinite(rightDate)
+          ? leftDate - rightDate
+          : 0;
+      return sortOrder === "recent"
+        ? -dateOrder || -numericIdOrder
+        : dateOrder || numericIdOrder;
+    });
+  }, [wikiPages, searchText, sortOrder]);
+
   const tableItems = React.useMemo<ITableDataItem[]>(
     () =>
-      wikiPages.map((page) => ({
+      visiblePages.map((page) => ({
         name: page.path,
         url: page.remoteUrl,
         project: page.projectName,
+        wiki: page.wikiName,
+        followedDate: page.followedDate,
+        subscriptionId: page.subscriptionId,
       })),
+    [visiblePages]
+  );
+  const tableColumns = React.useMemo(
+    () =>
+      getColumns((subscriptionId) => {
+        const target = wikiPages.find(
+          (item) => item.subscriptionId === subscriptionId
+        );
+        if (target) {
+          setActionError(null);
+          setPendingUnfollow(target);
+        }
+      }),
     [wikiPages]
   );
   const itemProvider = React.useMemo(
@@ -371,14 +481,51 @@ function App() {
     <Page className="page-content flex-grow">
       <div title="Wiki Subscriptions">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <h4>
-            Hello {user?.name}
-            {subscriptionCount > 0 && (
-              <span> with {subscriptionCount} subscriptions</span>
-            )}
-          </h4>
+          <h4>Hello {user?.name}</h4>
           <Button text="Refresh" onClick={handleRefresh} disabled={isRefreshing} />
         </div>
+        <div className="wiki-toolbar">
+          <TextField
+            ariaLabel="Search followed wiki pages"
+            className="wiki-search"
+            placeholder="Search pages, wikis, or projects"
+            value={searchText}
+            onChange={(_, value) => setSearchText(value || "")}
+          />
+          <div className="wiki-sort" role="group" aria-label="Sort followed pages">
+            <span className="wiki-sort-label">Sort</span>
+            <Button
+              text="Recently followed"
+              ariaLabel="Sort by recently followed"
+              ariaPressed={sortOrder === "recent"}
+              className={sortOrder === "recent" ? "wiki-sort-selected" : ""}
+              onClick={() => setSortOrder("recent")}
+            />
+            <Button
+              text="Oldest followed"
+              ariaLabel="Sort by oldest followed"
+              ariaPressed={sortOrder === "oldest"}
+              className={sortOrder === "oldest" ? "wiki-sort-selected" : ""}
+              onClick={() => setSortOrder("oldest")}
+            />
+            <Button
+              text="Name (A–Z)"
+              ariaLabel="Sort by name A to Z"
+              ariaPressed={sortOrder === "name"}
+              className={sortOrder === "name" ? "wiki-sort-selected" : ""}
+              onClick={() => setSortOrder("name")}
+            />
+          </div>
+        </div>
+        <div className="wiki-results-count" aria-live="polite">
+          {visiblePages.length} of {wikiPages.length} pages
+          <span className="wiki-subscription-total">{subscriptionCount} subscriptions</span>
+        </div>
+        {actionError && (
+          <MessageCard severity={MessageCardSeverity.Error}>
+            <div>{actionError}</div>
+          </MessageCard>
+        )}
         {errorMessage && (
           <MessageCard severity={MessageCardSeverity.Error}>
             <div>{errorMessage}</div>
@@ -390,14 +537,14 @@ function App() {
           </MessageCard>
         )}
         {isRefreshing && initialDataReady && <Spinner label="Refreshing" />}
-        {initialDataReady && (
+        {initialDataReady && visiblePages.length > 0 && (
           <Card
             className="flex-grow bolt-table-card"
             contentProps={{ contentPadding: false }}
           >
             <Table
-              ariaLabel="Basic Table"
-              columns={fixedColumns}
+              ariaLabel="Followed wiki pages"
+              columns={tableColumns}
               itemProvider={itemProvider}
               role="table"
               className="table-example"
@@ -405,7 +552,47 @@ function App() {
             />
           </Card>
         )}
+        {initialDataReady && visiblePages.length === 0 && (
+          <div className="wiki-empty-state" role="status">
+            <h3>{wikiPages.length === 0 ? "No followed pages yet" : "No pages match your search"}</h3>
+            <p>
+              {wikiPages.length === 0
+                ? "Pages you follow in Azure DevOps will appear here."
+                : "Try another page name, wiki, or project."}
+            </p>
+            {wikiPages.length > 0 && searchText && (
+              <Button text="Clear search" onClick={() => setSearchText("")} />
+            )}
+          </div>
+        )}
         {!initialDataReady && !errorMessage && <Spinner label="loading" />}
+        {pendingUnfollow && (
+          <Dialog
+            titleProps={{ text: "Unfollow this page?" }}
+            onDismiss={() => !isUnfollowing && setPendingUnfollow(null)}
+            modal
+            lightDismiss={!isUnfollowing}
+            showCloseButton={!isUnfollowing}
+            primaryButtonProps={{
+              text: isUnfollowing ? "Unfollowing…" : "Unfollow",
+              danger: true,
+              disabled: isUnfollowing,
+              onClick: handleUnfollow,
+            }}
+            footerButtonProps={[
+              {
+                text: "Cancel",
+                disabled: isUnfollowing,
+                onClick: () => setPendingUnfollow(null),
+              },
+            ]}
+          >
+            <p>
+              Stop following <strong>{pendingUnfollow.path}</strong> in {pendingUnfollow.wikiName}?
+              This page will be removed from your list.
+            </p>
+          </Dialog>
+        )}
       </div>
     </Page>
   );
